@@ -1,0 +1,8 @@
+{
+  "name": "Coba Kontrol Produksi Sewing TW 38 V.1",
+  "description": "Sistem kontrol manufaktur sewing garmen dengan RBAC (Production Engineer & Admin Line 1, 3, 4, 5, 6, 7), input breakdown proses per line, integrasi Google Spreadsheet & Google Apps Script (Web App Webhook), penyesuaian nama operator & mesin, visualisasi layout mesin tiap line, dan pencatatan output per jam F-SEW-005-00.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
