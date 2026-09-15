@@ -139,7 +139,17 @@ export default function App() {
     return INITIAL_SEPTEMBER_2026_LOGS;
   });
 
-  const [selectedDate, setSelectedDate] = useState<string>("2026-09-13");
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem("sewsmart_selected_date_v4");
+      if (saved) return saved;
+    } catch (e) {}
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  });
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   // Active Line's Breakdown Data (BP)
@@ -150,6 +160,36 @@ export default function App() {
   const activeProcesses = currentLineBP.processes;
   const activeMetadata = currentLineBP.metadata;
   const activeMachineRequirements = currentLineBP.machineRequirements;
+
+  // Handler for selecting active running process date
+  const handleSelectDate = (newDate: string) => {
+    setSelectedDate(newDate);
+    try {
+      localStorage.setItem("sewsmart_selected_date_v4", newDate);
+    } catch (e) {}
+
+    // Auto-align schedule if Saturday
+    const d = new Date(newDate + "T00:00:00");
+    if (!isNaN(d.getTime())) {
+      if (d.getDay() === 6) {
+        setWorkSchedule("sabtu");
+      } else if (d.getDay() >= 1 && d.getDay() <= 5) {
+        setWorkSchedule("senin_jumat");
+      }
+    }
+
+    setLinesData((prev) => {
+      const lineObj = prev[selectedLine];
+      if (!lineObj) return prev;
+      return {
+        ...prev,
+        [selectedLine]: {
+          ...lineObj,
+          date: newDate,
+        },
+      };
+    });
+  };
 
   // Line Production Data for Lines 1, 3, 4, 5, 6, 7 (Generated with each line's BP)
   const [linesData, setLinesData] = useState<Record<number, LineProductionData>>(() => {
@@ -228,8 +268,12 @@ export default function App() {
 
   // Current line data
   const currentLineData = useMemo(() => {
-    return linesData[selectedLine] || generateInitialLineRows(selectedLine, activeProcesses, currentLineOperators, workSchedule);
-  }, [linesData, selectedLine, activeProcesses, currentLineOperators, workSchedule]);
+    const raw = linesData[selectedLine] || generateInitialLineRows(selectedLine, activeProcesses, currentLineOperators, workSchedule);
+    return {
+      ...raw,
+      date: selectedDate || raw.date,
+    };
+  }, [linesData, selectedLine, activeProcesses, currentLineOperators, workSchedule, selectedDate]);
 
   // LINE BALANCING OPTIMIZATION ENGINE
   // Computes current layout vs recommended layout, metrics, alerts, machine reqs, double job & tandem
@@ -849,6 +893,8 @@ export default function App() {
             currentUser={currentUser}
             workSchedule={workSchedule}
             onToggleWorkSchedule={setWorkSchedule}
+            selectedDate={selectedDate}
+            onSelectDate={handleSelectDate}
             onClearLineHourlyData={() => handleClearLineHourlyData(selectedLine)}
             onApplyDoubleJob={handleApplyDoubleJob}
             onApplyTandem={handleApplyTandem}
@@ -937,7 +983,7 @@ export default function App() {
             dailyLogs={dailyLogs}
             onSaveDailyLog={handleSaveDailyLog}
             selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
+            onSelectDate={handleSelectDate}
           />
         )}
       </main>

@@ -31,9 +31,17 @@ import {
   Check,
   TrendingDown,
   Layers,
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
 } from "lucide-react";
 import { exportProductionSheetToExcel } from "../utils/excelParser";
 import { getGradeBadge } from "../utils/grading";
+import {
+  formatIndoDate,
+  formatIndoDateWithDay,
+  offsetDate,
+} from "../utils/dateUtils";
 
 interface HourlyProductionSheetProps {
   metadata: StyleMetadata;
@@ -181,6 +189,52 @@ export const HourlyProductionSheet: React.FC<HourlyProductionSheetProps> = ({
     setTimeout(() => setActionSuccessMsg(null), 4000);
   };
 
+  // Active Running Process Date Handling
+  const activeDate = selectedDate || lineData.date || "2026-09-14";
+
+  const todayStr = React.useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  const isToday = activeDate === todayStr;
+
+  const handleDateChange = (newDate: string) => {
+    if (!newDate) return;
+    if (onSelectDate) {
+      onSelectDate(newDate);
+    }
+    showNotification(`Tanggal proses dialihkan ke: ${formatIndoDateWithDay(newDate)}`);
+  };
+
+  const handlePrevDay = () => {
+    const prev = offsetDate(activeDate, -1);
+    handleDateChange(prev);
+  };
+
+  const handleNextDay = () => {
+    const next = offsetDate(activeDate, 1);
+    handleDateChange(next);
+  };
+
+  const handleSetToday = () => {
+    handleDateChange(todayStr);
+  };
+
+  const handleSetYesterday = () => {
+    const yesterday = offsetDate(todayStr, -1);
+    handleDateChange(yesterday);
+  };
+
+  // Check day of week for activeDate
+  const activeDateObj = new Date(activeDate + "T00:00:00");
+  const dayOfWeek = !isNaN(activeDateObj.getTime()) ? activeDateObj.getDay() : 1;
+  const isSaturday = dayOfWeek === 6;
+  const isSunday = dayOfWeek === 0;
+
   return (
     <div className="space-y-6">
       {/* Attendance & Status Alert Banner */}
@@ -210,22 +264,19 @@ export const HourlyProductionSheet: React.FC<HourlyProductionSheetProps> = ({
             <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-3">
               <span>Supervisor: <strong className="text-slate-700">{lineData.supervisor}</strong></span>
               <span>QC: <strong className="text-slate-700">{lineData.qcInspector}</strong></span>
-              {selectedDate && onSelectDate ? (
-                <span className="flex items-center space-x-1 font-semibold text-slate-700">
-                  <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Tanggal Monitor:</span>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => {
-                      if (e.target.value) onSelectDate(e.target.value);
-                    }}
-                    className="font-mono text-xs font-bold text-blue-700 bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded cursor-pointer border border-slate-200"
-                  />
-                </span>
-              ) : (
-                <span>Tanggal: <strong>{lineData.date}</strong></span>
-              )}
+              <span className="flex items-center space-x-1.5 font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                <span>Tanggal:</span>
+                <input
+                  type="date"
+                  value={activeDate}
+                  onChange={(e) => {
+                    if (e.target.value) handleDateChange(e.target.value);
+                  }}
+                  className="font-mono text-xs font-bold text-blue-700 bg-white hover:bg-slate-50 px-1.5 py-0.5 rounded cursor-pointer border border-slate-300 shadow-2xs"
+                  title="Pilih tanggal proses yang berjalan"
+                />
+              </span>
             </div>
           </div>
         </div>
@@ -329,6 +380,135 @@ export const HourlyProductionSheet: React.FC<HourlyProductionSheetProps> = ({
             <Download className="w-3.5 h-3.5" />
             <span>Excel</span>
           </button>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* PANEL OPSI PEMILIHAN TANGGAL PROSES YANG BERJALAN                         */}
+      {/* ========================================================================= */}
+      <div className="bg-white rounded-2xl border border-blue-200/90 shadow-xs p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-gradient-to-r from-blue-50/60 via-white to-slate-50">
+        {/* Left: Active Date Status & Details */}
+        <div className="flex items-start sm:items-center space-x-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0 mt-0.5 sm:mt-0">
+            <CalendarDays className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs uppercase font-extrabold tracking-wider text-slate-500">
+                Opsi Pemilihan Tanggal Proses yang Berjalan:
+              </span>
+              {isToday ? (
+                <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>SEDANG BERJALAN AKTIF (HARI INI)</span>
+                </span>
+              ) : isSaturday ? (
+                <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                  <Clock className="w-3 h-3 text-amber-700" />
+                  <span>JADWAL SABTU (5 JAM KERJA)</span>
+                </span>
+              ) : isSunday ? (
+                <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
+                  <AlertCircle className="w-3 h-3 text-rose-600" />
+                  <span>HARI MINGGU (LIBUR / OVERTIME)</span>
+                </span>
+              ) : activeDate < todayStr ? (
+                <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
+                  <Calendar className="w-3 h-3 text-slate-500" />
+                  <span>ARSIP / REKAP HISTORIS</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-300">
+                  <Calendar className="w-3 h-3 text-purple-600" />
+                  <span>JADWAL PRODUKSI MENDATANG</span>
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-baseline gap-2 mt-1">
+              <span className="text-base sm:text-xl font-black text-slate-900">
+                {formatIndoDateWithDay(activeDate)}
+              </span>
+              <span className="text-xs text-slate-500 font-medium">
+                (Shift: <strong>{workSchedule === "sabtu" ? "Sabtu (5 Jam)" : "Senin - Jumat (8 Jam)"}</strong> &bull; Target: <strong className="text-blue-700">{activeWorkingHours * 10} Pcs/Hari</strong>)
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Date Picker Controls & Quick Stepper Presets */}
+        <div className="flex flex-wrap items-center gap-2 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-200">
+          {/* Stepper with Previous & Next */}
+          <div className="flex items-center bg-white p-1 rounded-xl border border-slate-300 shadow-2xs">
+            <button
+              type="button"
+              onClick={handlePrevDay}
+              className="px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold text-xs flex items-center space-x-1 transition-all"
+              title="Pindah ke hari sebelumnya (H-1)"
+            >
+              <ChevronLeft className="w-4 h-4 text-slate-500" />
+              <span className="hidden sm:inline">H-1</span>
+            </button>
+
+            <div className="flex items-center px-2 border-x border-slate-200">
+              <input
+                type="date"
+                value={activeDate}
+                onChange={(e) => {
+                  if (e.target.value) handleDateChange(e.target.value);
+                }}
+                className="font-mono text-xs font-bold text-blue-700 bg-blue-50/50 hover:bg-blue-50 focus:bg-white px-2 py-1 rounded-lg border border-blue-200 outline-none cursor-pointer"
+                title="Klik untuk memilih tanggal proses dari kalender"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleNextDay}
+              className="px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold text-xs flex items-center space-x-1 transition-all"
+              title="Pindah ke hari berikutnya (H+1)"
+            >
+              <span className="hidden sm:inline">H+1</span>
+              <ChevronRight className="w-4 h-4 text-slate-500" />
+            </button>
+          </div>
+
+          {/* Quick Preset Buttons */}
+          <div className="flex items-center space-x-1.5">
+            <button
+              type="button"
+              onClick={handleSetToday}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs ${
+                isToday
+                  ? "bg-blue-600 text-white shadow-xs ring-2 ring-blue-300"
+                  : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-blue-400"
+              }`}
+              title="Setel ke tanggal hari ini"
+            >
+              Hari Ini
+            </button>
+            <button
+              type="button"
+              onClick={handleSetYesterday}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-2xs"
+              title="Setel ke tanggal kemarin"
+            >
+              Kemarin
+            </button>
+          </div>
+
+          {/* Prompt switch to Saturday schedule if Saturday is selected */}
+          {isSaturday && workSchedule !== "sabtu" && onToggleWorkSchedule && (
+            <button
+              type="button"
+              onClick={() => onToggleWorkSchedule("sabtu")}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white flex items-center space-x-1 animate-pulse shadow-xs"
+              title="Tanggal yang dipilih adalah hari Sabtu, klik untuk beralih ke jadwal 5 Jam"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>Ganti Shift Sabtu (5h)</span>
+            </button>
+          )}
         </div>
       </div>
 

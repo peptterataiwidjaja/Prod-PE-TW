@@ -64,7 +64,7 @@ export const STANDARD_26_PROCESSES: ProcessItem[] = [
 
 // Names database for 26 operators per line
 const OPERATOR_NAMES_POOL: string[] = [
-  "Siti Rahmawati", "Agus Supriatna", "Dewi Lestari", "Budi Santoso", "Wati Handayani",
+  "Siti Rahmawati", "Agus Supriatna", "Dewi Lestari", "Fikri Putra", "Wati Handayani",
   "Rini Anggraini", "Eko Prasetyo", "Sri Mulyani", "Hendra Wijaya", "Nurul Hidayah",
   "Yayan Sopiyan", "Titi Kusuma", "Fajar Pratama", "Lia Safitri", "Aris Munandar",
   "Mega Utami", "Ahmad Subagyo", "Ratna Sari", "Dedi Kusnadi", "Fitriani",

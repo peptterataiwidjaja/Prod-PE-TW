@@ -581,7 +581,7 @@ export const DailyReportSheet: React.FC<DailyReportSheetProps> = ({
                 </div>
                 <div>
                   <span className="text-[9px] text-slate-400 uppercase block mb-6">PE Head</span>
-                  <strong className="text-slate-800 underline block text-[11px]">Ir. Budi Santoso</strong>
+                  <strong className="text-slate-800 underline block text-[11px]">Fikri Putra</strong>
                 </div>
               </div>
             </div>
