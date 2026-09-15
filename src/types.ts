@@ -163,6 +163,13 @@ export interface LayoutStation {
   combinedSMV?: number;
   isTandem?: boolean;
   tandemOperators?: string[];
+  tandemProcessNo?: number;
+  tandemProcessName?: string;
+  tandemMachine?: string;
+  tandemSMV?: number;
+  tandemCycleTimeSec?: number;
+  tandemOperatorName?: string;
+  tandemReason?: string;
   hasMachineShortage?: boolean;
 }
 
@@ -183,6 +190,39 @@ export interface HourlyBottleneckSuggestion {
   candidateStationNo?: number;
   candidateSMV?: number;
   expectedBenefit: string;
+}
+
+export interface TandemAnalysisItem {
+  stationNo: number;
+  primaryProcessNo: number;
+  primaryProcessName: string;
+  primaryMachine: string;
+  primarySMV: number;
+  primaryCycleTimeSec: number;
+  primaryOperatorName: string;
+  tandemProcessNo: number;
+  tandemProcessName: string;
+  tandemMachine: string;
+  tandemSMV: number;
+  tandemCycleTimeSec: number;
+  tandemOperatorName: string;
+  combinedSMV: number;
+  effectiveCycleTimeSec: number;
+  taktTimeSec: number;
+  workloadRatio: number;
+  status: "normal" | "warning" | "bottleneck";
+  reason: string;
+  engineeringBenefit: string;
+}
+
+export interface TandemAnalysisResult {
+  totalProcesses: number;
+  physicalLayoutStations: number; // strictly 26
+  hasProcessesExceeding26: boolean;
+  exceedingCount: number;
+  tandemStationCount: number;
+  tandemStations: TandemAnalysisItem[];
+  lineBalancingImprovement: string;
 }
 
 export interface LineBalancingResult {

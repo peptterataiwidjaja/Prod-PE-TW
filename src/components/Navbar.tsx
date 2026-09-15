@@ -20,6 +20,7 @@ import {
   Sparkles,
   RotateCcw,
   Code2,
+  LogOut,
 } from "lucide-react";
 import { VALID_LINES } from "../data/defaultData";
 import { User, LineNumber } from "../types";
@@ -38,6 +39,7 @@ interface NavbarProps {
   onOpenPrintReport: () => void;
   onExportExcel: () => void;
   onOpenLoginModal?: () => void;
+  onLogout?: () => void;
   onOpenGoogleScript?: () => void;
   isGoogleScriptConnected?: boolean;
   onClearData?: () => void;
@@ -61,6 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenPrintReport,
   onExportExcel,
   onOpenLoginModal,
+  onLogout,
   onOpenGoogleScript,
   isGoogleScriptConnected = false,
   onClearData,
@@ -299,6 +302,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <Edit3 className="w-3.5 h-3.5 text-blue-600" />
                       <span>Ubah Profil Akun</span>
                     </button>
+
+                    {onLogout && (
+                      <button
+                        id="btn-logout-screen"
+                        onClick={() => {
+                          setIsUserDropdownOpen(false);
+                          onLogout();
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-rose-700 hover:bg-rose-50 flex items-center space-x-2 transition-colors border border-rose-200 mt-1.5"
+                      >
+                        <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Keluar / Ganti Akun</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

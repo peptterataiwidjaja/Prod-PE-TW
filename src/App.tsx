@@ -64,6 +64,7 @@ import { LineLayoutPrintReport } from "./components/LineLayoutPrintReport";
 import { DailyReportSheet } from "./components/DailyReportSheet";
 import { LoginModal } from "./components/LoginModal";
 import { GoogleScriptModal } from "./components/GoogleScriptModal";
+import { LoginScreen } from "./components/LoginScreen";
 
 export default function App() {
   // Navigation & Line Selection
@@ -88,6 +89,36 @@ export default function App() {
     } catch (e) {}
     return DEFAULT_USERS[0]; // Default: Production Engineer
   });
+
+  // Dedicated Login Screen State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("sewsmart_auth_status_v4") === "true";
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    try {
+      localStorage.setItem("sewsmart_auth_status_v4", "true");
+      localStorage.setItem("sewsmart_current_user_v4", JSON.stringify(user));
+    } catch (e) {}
+
+    // Auto-navigate to assigned line for Admin Line
+    if (user.role === "admin_line" && user.assignedLine) {
+      setSelectedLine(user.assignedLine as LineNumber);
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    try {
+      localStorage.removeItem("sewsmart_auth_status_v4");
+    } catch (e) {}
+  };
 
   // Master per-line Breakdown Process (BP) State
   // Each line has its own distinct BP uploaded by its admin
@@ -743,6 +774,11 @@ export default function App() {
   const presentCount = currentLineOperators.filter((o) => o.attendanceStatus === "HADIR").length;
   const totalOpsCount = currentLineOperators.length;
 
+  // Dedicated Initial Login View
+  if (!isAuthenticated) {
+    return <LoginScreen users={users} onLogin={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
       {/* Precision Navbar */}
@@ -754,6 +790,7 @@ export default function App() {
         currentUser={currentUser}
         users={users}
         onSwitchUser={handleSwitchUser}
+        onLogout={handleLogout}
         onOpenTargetAnalysis={() => setIsTargetAnalysisOpen(true)}
         onOpenEditUser={() => setIsEditUserOpen(true)}
         onOpenPrintReport={() => setIsPrintReportOpen(true)}
@@ -834,6 +871,7 @@ export default function App() {
             recommendedBalancing={optimizationResult.recommendedBalancing}
             alerts={optimizationResult.alerts}
             unassignedProcesses={optimizationResult.unassignedProcesses}
+            tandemAnalysis={optimizationResult.tandemAnalysis}
             machineRequirements={activeMachineRequirements}
             workingHours={effectiveWorkingHours}
             workSchedule={workSchedule}

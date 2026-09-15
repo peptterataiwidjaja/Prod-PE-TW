@@ -7,6 +7,7 @@ import {
   LayoutStation,
   LineBalancingResult,
   MachineRequirement,
+  TandemAnalysisResult,
 } from "../types";
 import {
   Layers,
@@ -31,6 +32,7 @@ import {
   Info,
   AlertCircle,
   HelpCircle,
+  Zap,
 } from "lucide-react";
 import { getGradeBadge } from "../utils/grading";
 
@@ -47,6 +49,7 @@ interface MachineLayoutVisualizerProps {
   onToggleWorkSchedule?: (schedule: "senin_jumat" | "sabtu") => void;
   alerts: string[];
   unassignedProcesses: ProcessItem[];
+  tandemAnalysis?: TandemAnalysisResult;
   onApplyRecommendedLayout: () => void;
   onOpenPrintReport?: () => void;
 }
@@ -64,10 +67,13 @@ export const MachineLayoutVisualizer: React.FC<MachineLayoutVisualizerProps> = (
   onToggleWorkSchedule,
   alerts,
   unassignedProcesses,
+  tandemAnalysis,
   onApplyRecommendedLayout,
   onOpenPrintReport,
 }) => {
-  const [activeTab, setActiveTab] = useState<"floor_plan" | "machine_bar" | "compare" | "pitch">("floor_plan");
+  const [activeTab, setActiveTab] = useState<
+    "floor_plan" | "tandem_analysis" | "machine_bar" | "compare" | "pitch"
+  >("floor_plan");
   const [viewMode, setViewMode] = useState<"recommended" | "current">("recommended");
   const [selectedStation, setSelectedStation] = useState<LayoutStation | null>(null);
   const [appliedSuccess, setAppliedSuccess] = useState(false);
@@ -221,7 +227,23 @@ export const MachineLayoutVisualizer: React.FC<MachineLayoutVisualizerProps> = (
                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
             }`}
           >
-            <span>🏭 Denah Visual Meja Sewing (Floor Plan)</span>
+            <span>🏭 Denah Visual Meja Sewing (Floor Plan 26)</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("tandem_analysis")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
+              activeTab === "tandem_analysis"
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>⚡ Analisis Tandem & Layout 26</span>
+            {tandemAnalysis && tandemAnalysis.exceedingCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 text-[10px] font-extrabold ml-1">
+                +{tandemAnalysis.exceedingCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab("machine_bar")}
@@ -353,66 +375,116 @@ export const MachineLayoutVisualizer: React.FC<MachineLayoutVisualizerProps> = (
                           key={st.stationNo}
                           onClick={() => setSelectedStation(st)}
                           className={`relative rounded-xl p-2.5 cursor-pointer transition-all duration-200 transform hover:-translate-y-1 hover:shadow-lg ${
-                            isUnassigned
+                            isTandem
+                              ? "bg-gradient-to-b from-indigo-950 via-slate-900 to-purple-950 border-2 border-indigo-400 shadow-md shadow-indigo-950/80 ring-1 ring-indigo-400/50"
+                              : isUnassigned
                               ? "bg-rose-950/80 border-2 border-rose-500 shadow-rose-950"
                               : isBottleneck
                               ? "bg-rose-950/60 border-2 border-rose-500"
                               : isDoubleJob
                               ? "bg-amber-950/50 border border-amber-400"
-                              : isTandem
-                              ? "bg-indigo-950/60 border border-indigo-400"
                               : "bg-slate-800/90 border border-slate-700 hover:border-blue-400"
                           }`}
                         >
-                          {/* Top Tag: Station No & Machine */}
+                          {/* Top Tag: Station No & Machine / Tandem Badge */}
                           <div className="flex items-center justify-between text-[10px] font-mono mb-1">
-                            <span className="font-extrabold text-white bg-slate-700/80 px-1 rounded">
+                            <span
+                              className={`font-extrabold px-1 rounded ${
+                                isTandem
+                                  ? "bg-indigo-600 text-white"
+                                  : "bg-slate-700/80 text-white"
+                              }`}
+                            >
                               #{st.stationNo}
                             </span>
-                            <span className="font-bold text-blue-300 truncate max-w-[50px]">
-                              {st.machineType}
-                            </span>
+                            {isTandem ? (
+                              <span className="font-extrabold text-amber-300 text-[8px] px-1 py-0.2 bg-indigo-500/40 rounded border border-indigo-400/50">
+                                ⚡ TANDEM
+                              </span>
+                            ) : (
+                              <span className="font-bold text-blue-300 truncate max-w-[50px]">
+                                {st.machineType}
+                              </span>
+                            )}
                           </div>
 
                           {/* Sewing Machine & Needle Icon Graphic */}
-                          <div className="h-10 w-full bg-slate-950/60 rounded-lg flex items-center justify-center my-1 relative border border-slate-800">
-                            {/* Visual Sewing Machine Head */}
+                          <div
+                            className={`h-10 w-full rounded-lg flex items-center justify-center my-1 relative border ${
+                              isTandem
+                                ? "bg-indigo-950/80 border-indigo-500/50"
+                                : "bg-slate-950/60 border-slate-800"
+                            }`}
+                          >
                             <div className="text-slate-400 flex flex-col items-center">
-                              <span className="text-[16px] leading-none">🪡</span>
-                              <span className="text-[8px] font-mono text-slate-400 font-bold">
+                              <span className="text-[14px] leading-none">
+                                {isTandem ? "🪡⚡🪡" : "🪡"}
+                              </span>
+                              <span
+                                className={`text-[8px] font-mono font-bold ${
+                                  isTandem ? "text-indigo-300" : "text-slate-400"
+                                }`}
+                              >
                                 {st.cycleTimeSec}s
                               </span>
                             </div>
 
                             {/* Warning Indicator */}
-                            {hasWarning && (
-                              <div className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full p-0.5 shadow-md animate-bounce" title="Peringatan Masalah!">
+                            {hasWarning && !isTandem && (
+                              <div
+                                className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full p-0.5 shadow-md animate-bounce"
+                                title="Peringatan Masalah!"
+                              >
                                 <AlertTriangle className="w-3 h-3" />
                               </div>
                             )}
 
                             {isDoubleJob && !hasWarning && (
-                              <div className="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-900 rounded-full text-[8px] font-extrabold px-1" title="Double Job">
+                              <div
+                                className="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-900 rounded-full text-[8px] font-extrabold px-1"
+                                title="Double Job"
+                              >
                                 DJ
                               </div>
                             )}
 
-                            {isTandem && !hasWarning && (
-                              <div className="absolute -top-1.5 -right-1.5 bg-indigo-500 text-white rounded-full text-[8px] font-extrabold px-1" title="Tandem">
+                            {isTandem && (
+                              <div
+                                className="absolute -top-1.5 -right-1.5 bg-gradient-to-r from-amber-400 to-indigo-500 text-slate-950 rounded-full text-[8px] font-black px-1 shadow-sm"
+                                title="Stasiun Tandem (2 Op / 2 Proses)"
+                              >
                                 2X
                               </div>
                             )}
                           </div>
 
                           {/* Process Name */}
-                          <div className="text-[10px] font-bold text-slate-200 truncate" title={st.processName}>
+                          <div
+                            className="text-[10px] font-bold text-slate-200 truncate"
+                            title={st.processName}
+                          >
                             {st.processName}
                           </div>
+                          {isTandem && st.tandemProcessName && (
+                            <div
+                              className="text-[8px] font-bold text-amber-300 truncate mt-0.5"
+                              title={`Proses Tandem: #${st.tandemProcessNo} ${st.tandemProcessName}`}
+                            >
+                              + #{st.tandemProcessNo} {st.tandemProcessName}
+                            </div>
+                          )}
 
                           {/* Operator */}
-                          <div className="text-[9px] text-slate-400 truncate mt-0.5" title={st.assignedOperatorName}>
+                          <div
+                            className={`text-[9px] truncate mt-0.5 ${
+                              isTandem ? "text-indigo-200 font-semibold" : "text-slate-400"
+                            }`}
+                            title={st.assignedOperatorName}
+                          >
                             {isUnassigned ? (
                               <span className="text-rose-400 font-bold">KOSONG</span>
+                            ) : isTandem ? (
+                              <span>{st.assignedOperatorName?.replace(" (Tandem)", "")}</span>
                             ) : (
                               <span>{st.assignedOperatorName?.split(" ")[0]}</span>
                             )}
@@ -420,9 +492,17 @@ export const MachineLayoutVisualizer: React.FC<MachineLayoutVisualizerProps> = (
 
                           {/* Badge Footer */}
                           <div className="mt-1 flex items-center justify-between text-[8px] font-mono">
-                            <span className="text-slate-400">SMV {st.smv}m</span>
-                            {st.workloadRatio > 1.0 ? (
-                              <span className="text-rose-400 font-bold">+{Math.round((st.workloadRatio - 1) * 100)}%</span>
+                            <span
+                              className={isTandem ? "text-indigo-300 font-bold" : "text-slate-400"}
+                            >
+                              {isTandem && st.combinedSMV ? `∑${st.combinedSMV}m` : `SMV ${st.smv}m`}
+                            </span>
+                            {isTandem ? (
+                              <span className="text-amber-400 font-bold">TANDEM</span>
+                            ) : st.workloadRatio > 1.0 ? (
+                              <span className="text-rose-400 font-bold">
+                                +{Math.round((st.workloadRatio - 1) * 100)}%
+                              </span>
                             ) : (
                               <span className="text-emerald-400">OK</span>
                             )}
@@ -467,65 +547,116 @@ export const MachineLayoutVisualizer: React.FC<MachineLayoutVisualizerProps> = (
                           key={st.stationNo}
                           onClick={() => setSelectedStation(st)}
                           className={`relative rounded-xl p-2.5 cursor-pointer transition-all duration-200 transform hover:-translate-y-1 hover:shadow-lg ${
-                            isUnassigned
+                            isTandem
+                              ? "bg-gradient-to-b from-indigo-950 via-slate-900 to-purple-950 border-2 border-indigo-400 shadow-md shadow-indigo-950/80 ring-1 ring-indigo-400/50"
+                              : isUnassigned
                               ? "bg-rose-950/80 border-2 border-rose-500 shadow-rose-950"
                               : isBottleneck
                               ? "bg-rose-950/60 border-2 border-rose-500"
                               : isDoubleJob
                               ? "bg-amber-950/50 border border-amber-400"
-                              : isTandem
-                              ? "bg-indigo-950/60 border border-indigo-400"
                               : "bg-slate-800/90 border border-slate-700 hover:border-emerald-400"
                           }`}
                         >
-                          {/* Top Tag: Station No & Machine */}
+                          {/* Top Tag: Station No & Machine / Tandem Badge */}
                           <div className="flex items-center justify-between text-[10px] font-mono mb-1">
-                            <span className="font-extrabold text-white bg-slate-700/80 px-1 rounded">
+                            <span
+                              className={`font-extrabold px-1 rounded ${
+                                isTandem
+                                  ? "bg-indigo-600 text-white"
+                                  : "bg-slate-700/80 text-white"
+                              }`}
+                            >
                               #{st.stationNo}
                             </span>
-                            <span className="font-bold text-emerald-300 truncate max-w-[50px]">
-                              {st.machineType}
-                            </span>
+                            {isTandem ? (
+                              <span className="font-extrabold text-amber-300 text-[8px] px-1 py-0.2 bg-indigo-500/40 rounded border border-indigo-400/50">
+                                ⚡ TANDEM
+                              </span>
+                            ) : (
+                              <span className="font-bold text-emerald-300 truncate max-w-[50px]">
+                                {st.machineType}
+                              </span>
+                            )}
                           </div>
 
                           {/* Sewing Machine & Needle Icon Graphic */}
-                          <div className="h-10 w-full bg-slate-950/60 rounded-lg flex items-center justify-center my-1 relative border border-slate-800">
+                          <div
+                            className={`h-10 w-full rounded-lg flex items-center justify-center my-1 relative border ${
+                              isTandem
+                                ? "bg-indigo-950/80 border-indigo-500/50"
+                                : "bg-slate-950/60 border-slate-800"
+                            }`}
+                          >
                             <div className="text-slate-400 flex flex-col items-center">
-                              <span className="text-[16px] leading-none">🪡</span>
-                              <span className="text-[8px] font-mono text-slate-400 font-bold">
+                              <span className="text-[14px] leading-none">
+                                {isTandem ? "🪡⚡🪡" : "🪡"}
+                              </span>
+                              <span
+                                className={`text-[8px] font-mono font-bold ${
+                                  isTandem ? "text-indigo-300" : "text-slate-400"
+                                }`}
+                              >
                                 {st.cycleTimeSec}s
                               </span>
                             </div>
 
                             {/* Warning Indicator */}
-                            {hasWarning && (
-                              <div className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full p-0.5 shadow-md animate-bounce" title="Peringatan Masalah!">
+                            {hasWarning && !isTandem && (
+                              <div
+                                className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full p-0.5 shadow-md animate-bounce"
+                                title="Peringatan Masalah!"
+                              >
                                 <AlertTriangle className="w-3 h-3" />
                               </div>
                             )}
 
                             {isDoubleJob && !hasWarning && (
-                              <div className="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-900 rounded-full text-[8px] font-extrabold px-1" title="Double Job">
+                              <div
+                                className="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-900 rounded-full text-[8px] font-extrabold px-1"
+                                title="Double Job"
+                              >
                                 DJ
                               </div>
                             )}
 
-                            {isTandem && !hasWarning && (
-                              <div className="absolute -top-1.5 -right-1.5 bg-indigo-500 text-white rounded-full text-[8px] font-extrabold px-1" title="Tandem">
+                            {isTandem && (
+                              <div
+                                className="absolute -top-1.5 -right-1.5 bg-gradient-to-r from-amber-400 to-indigo-500 text-slate-950 rounded-full text-[8px] font-black px-1 shadow-sm"
+                                title="Stasiun Tandem (2 Op / 2 Proses)"
+                              >
                                 2X
                               </div>
                             )}
                           </div>
 
                           {/* Process Name */}
-                          <div className="text-[10px] font-bold text-slate-200 truncate" title={st.processName}>
+                          <div
+                            className="text-[10px] font-bold text-slate-200 truncate"
+                            title={st.processName}
+                          >
                             {st.processName}
                           </div>
+                          {isTandem && st.tandemProcessName && (
+                            <div
+                              className="text-[8px] font-bold text-amber-300 truncate mt-0.5"
+                              title={`Proses Tandem: #${st.tandemProcessNo} ${st.tandemProcessName}`}
+                            >
+                              + #{st.tandemProcessNo} {st.tandemProcessName}
+                            </div>
+                          )}
 
                           {/* Operator */}
-                          <div className="text-[9px] text-slate-400 truncate mt-0.5" title={st.assignedOperatorName}>
+                          <div
+                            className={`text-[9px] truncate mt-0.5 ${
+                              isTandem ? "text-indigo-200 font-semibold" : "text-slate-400"
+                            }`}
+                            title={st.assignedOperatorName}
+                          >
                             {isUnassigned ? (
                               <span className="text-rose-400 font-bold">KOSONG</span>
+                            ) : isTandem ? (
+                              <span>{st.assignedOperatorName?.replace(" (Tandem)", "")}</span>
                             ) : (
                               <span>{st.assignedOperatorName?.split(" ")[0]}</span>
                             )}
@@ -533,9 +664,17 @@ export const MachineLayoutVisualizer: React.FC<MachineLayoutVisualizerProps> = (
 
                           {/* Badge Footer */}
                           <div className="mt-1 flex items-center justify-between text-[8px] font-mono">
-                            <span className="text-slate-400">SMV {st.smv}m</span>
-                            {st.workloadRatio > 1.0 ? (
-                              <span className="text-rose-400 font-bold">+{Math.round((st.workloadRatio - 1) * 100)}%</span>
+                            <span
+                              className={isTandem ? "text-indigo-300 font-bold" : "text-slate-400"}
+                            >
+                              {isTandem && st.combinedSMV ? `∑${st.combinedSMV}m` : `SMV ${st.smv}m`}
+                            </span>
+                            {isTandem ? (
+                              <span className="text-amber-400 font-bold">TANDEM</span>
+                            ) : st.workloadRatio > 1.0 ? (
+                              <span className="text-rose-400 font-bold">
+                                +{Math.round((st.workloadRatio - 1) * 100)}%
+                              </span>
                             ) : (
                               <span className="text-emerald-400">OK</span>
                             )}
@@ -546,6 +685,224 @@ export const MachineLayoutVisualizer: React.FC<MachineLayoutVisualizerProps> = (
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: ANALISIS TANDEM & PEMETAAN LAYOUT 26 */}
+      {activeTab === "tandem_analysis" && (
+        <div className="space-y-6">
+          {/* Header Card */}
+          <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-purple-950 rounded-3xl p-6 border border-indigo-700/50 shadow-xl text-white">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/40 text-indigo-300 text-xs font-bold mb-2">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Industrial Engineering &bull; Alokasi Stasiun Tandem & Batasan Meja 26</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                  Analisis Komparasi Tandem & Pemetaan Layout 26
+                </h2>
+                <p className="text-xs sm:text-sm text-indigo-200 mt-1 max-w-3xl leading-relaxed">
+                  Sesuai standar ergonomi sewing floor garmen, fisik layout dipertahankan tepat 26 stasiun kerja
+                  (13 meja baris kiri Infeed &bull; 13 meja baris kanan Outfeed). Ketika style breakdown proses
+                  melebihi 26 (atau memiliki bottleneck tinggi), proses berlebih dialokasikan ke stasiun tandem
+                  dengan 2 operator/helper untuk membagi siklus kerja dan menjaga Takt Time ({taktTime}s).
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                {onOpenPrintReport && (
+                  <button
+                    onClick={onOpenPrintReport}
+                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-white flex items-center space-x-1.5 transition-all"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>Cetak Laporan IE</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 4 Metric Highlight Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-indigo-800/60 text-xs">
+              <div className="bg-slate-950/70 p-3 rounded-2xl border border-indigo-900/60">
+                <span className="text-slate-400 text-[11px] block">Kapasitas Fisik Standar:</span>
+                <span className="text-lg font-black text-white">26 Stasiun</span>
+                <span className="text-[10px] text-indigo-300 block">13 Infeed &bull; 13 Outfeed</span>
+              </div>
+              <div className="bg-slate-950/70 p-3 rounded-2xl border border-indigo-900/60">
+                <span className="text-slate-400 text-[11px] block">Total Proses BP Line:</span>
+                <span className="text-lg font-black text-blue-400">
+                  {tandemAnalysis?.totalProcesses || 26} Proses
+                </span>
+                <span className="text-[10px] text-slate-400 block">
+                  {tandemAnalysis && tandemAnalysis.totalProcesses > 26 ? "Melebihi 26 stasiun" : "Dalam batas 26"}
+                </span>
+              </div>
+              <div className="bg-slate-950/70 p-3 rounded-2xl border border-indigo-900/60">
+                <span className="text-slate-400 text-[11px] block">Proses Berlebih (&gt; 26):</span>
+                <span
+                  className={`text-lg font-black ${
+                    tandemAnalysis && tandemAnalysis.exceedingCount > 0 ? "text-amber-400" : "text-emerald-400"
+                  }`}
+                >
+                  {tandemAnalysis?.exceedingCount || 0} Proses
+                </span>
+                <span className="text-[10px] text-slate-400 block">
+                  Ditampung di Stasiun Tandem
+                </span>
+              </div>
+              <div className="bg-slate-950/70 p-3 rounded-2xl border border-indigo-900/60">
+                <span className="text-slate-400 text-[11px] block">Stasiun Tandem Aktif:</span>
+                <span className="text-lg font-black text-indigo-400">
+                  {tandemAnalysis?.tandemStationCount || 0} Stasiun
+                </span>
+                <span className="text-[10px] text-emerald-300 block">Beban Kerja Terbagi</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tandem Comparison Table */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                  <span>Daftar Komparasi & Rincian Stasiun Tandem vs Stasiun Tunggal</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Rincian stasiun fisik (#1 s/d #26) yang mengoperasikan tandem dengan 2 operator atau menyerap proses &gt; 26
+                </p>
+              </div>
+              <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                {tandemAnalysis?.tandemStations?.length || 0} Stasiun Tandem Terkonfigurasi
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-[10px]">
+                    <th className="py-3 px-3 w-16 text-center">Meja #</th>
+                    <th className="py-3 px-3">Proses Utama (Host)</th>
+                    <th className="py-3 px-3">Proses Tandem (&gt;26 / Bantuan)</th>
+                    <th className="py-3 px-3">Operator yang Terlibat</th>
+                    <th className="py-3 px-2 text-center w-20">SMV Total</th>
+                    <th className="py-3 px-2 text-center w-24">Waktu Siklus Efektif</th>
+                    <th className="py-3 px-2 text-center w-24">Status Takt ({taktTime}s)</th>
+                    <th className="py-3 px-3 min-w-[220px]">Analisis IE & Manfaat</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {tandemAnalysis && tandemAnalysis.tandemStations.length > 0 ? (
+                    tandemAnalysis.tandemStations.map((item) => (
+                      <tr key={item.stationNo} className="hover:bg-indigo-50/40 transition-colors">
+                        <td className="py-3.5 px-3 text-center">
+                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-100 text-indigo-900 font-extrabold font-mono text-xs border border-indigo-300">
+                            #{item.stationNo}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <div className="font-bold text-slate-900">
+                            P#{item.primaryProcessNo}: {item.primaryProcessName}
+                          </div>
+                          <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                            Mesin: {item.primaryMachine} &bull; SMV: {item.primarySMV}m ({item.primaryCycleTimeSec}s)
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <div className="font-bold text-indigo-950 flex items-center space-x-1.5">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-600 text-white">
+                              TANDEM
+                            </span>
+                            <span>
+                              {item.tandemProcessNo > 0 ? `P#${item.tandemProcessNo}: ` : ""}
+                              {item.tandemProcessName}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-indigo-700 font-mono mt-0.5">
+                            Mesin: {item.tandemMachine} &bull; SMV: {item.tandemSMV}m ({item.tandemCycleTimeSec}s)
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <div className="flex items-center space-x-1 text-slate-800 font-medium">
+                            <span className="font-bold text-slate-900">{item.primaryOperatorName}</span>
+                            <span className="text-indigo-600 font-bold">&</span>
+                            <span className="font-bold text-indigo-700">{item.tandemOperatorName}</span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">2 Operator Kolaboratif</span>
+                        </td>
+                        <td className="py-3.5 px-2 text-center font-mono font-extrabold text-indigo-950 bg-indigo-50/40">
+                          {item.combinedSMV}m
+                        </td>
+                        <td className="py-3.5 px-2 text-center font-mono">
+                          <div className="font-extrabold text-slate-900 text-xs">
+                            {item.effectiveCycleTimeSec}s
+                          </div>
+                          <div className="text-[9px] text-slate-400 line-through">
+                            {item.primaryCycleTimeSec + item.tandemCycleTimeSec}s (1 Op)
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-2 text-center">
+                          {item.effectiveCycleTimeSec <= item.taktTimeSec ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              Lolos ({Math.round((item.effectiveCycleTimeSec / item.taktTimeSec) * 100)}%)
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">
+                              Waspada
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-3 text-slate-600 text-[11px] leading-relaxed">
+                          <div className="font-semibold text-slate-900 mb-0.5">{item.reason}</div>
+                          <div className="text-slate-500">{item.engineeringBenefit}</div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
+                        Tidak ada stasiun tandem aktif pada konfigurasi saat ini. Seluruh proses tertampung normal dalam 26 stasiun.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Complete 26-Station Mapping Summary */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs">
+            <h3 className="text-sm font-bold text-slate-900 mb-3">
+              Ikhtisar Alokasi 26 Stasiun Meja Jahit
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-13 gap-2">
+              {recommendedLayout.slice(0, 26).map((st) => {
+                const isTandem = st.isTandem;
+                const isDoubleJob = st.isDoubleJob;
+                return (
+                  <div
+                    key={st.stationNo}
+                    onClick={() => setSelectedStation(st)}
+                    className={`p-2 rounded-xl text-center cursor-pointer transition-all border ${
+                      isTandem
+                        ? "bg-indigo-900 text-white border-indigo-500 shadow-xs"
+                        : isDoubleJob
+                        ? "bg-amber-100 text-amber-900 border-amber-300"
+                        : "bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200"
+                    }`}
+                  >
+                    <div className="text-[10px] font-mono font-bold">#{st.stationNo}</div>
+                    <div className="text-[8px] truncate font-semibold mt-0.5">
+                      {isTandem ? "TANDEM" : isDoubleJob ? "DOUBLE" : "SINGLE"}
+                    </div>
+                    <div className="text-[8px] font-mono mt-0.5 opacity-80">{st.cycleTimeSec}s</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -957,10 +1314,44 @@ export const MachineLayoutVisualizer: React.FC<MachineLayoutVisualizerProps> = (
                 </div>
               )}
               {selectedStation.isTandem && (
-                <div className="p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-900">
-                  <span className="font-bold block">Status: Tandem (2 Operator)</span>
-                  <p className="text-[11px] mt-0.5 text-indigo-800">
-                    Dua operator dipasangkan untuk memotong siklus stasiun berat ini sebesar 50%.
+                <div className="p-3 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl text-indigo-950 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-indigo-900 flex items-center space-x-1">
+                      <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                      <span>Stasiun Kerja Tandem (2 Operator / 2 Proses)</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-200 text-indigo-900">
+                      Layout 26
+                    </span>
+                  </div>
+
+                  <div className="bg-white/80 p-2 rounded-xl border border-indigo-100 space-y-1 text-[11px]">
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-slate-700">Proses Utama:</span>
+                      <span className="font-bold text-slate-900">
+                        P#{selectedStation.processNo} ({selectedStation.smv}m)
+                      </span>
+                    </div>
+                    {selectedStation.tandemProcessName && (
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-indigo-700">Proses Tandem:</span>
+                        <span className="font-bold text-indigo-950">
+                          {selectedStation.tandemProcessNo ? `P#${selectedStation.tandemProcessNo}: ` : ""}
+                          {selectedStation.tandemProcessName} ({selectedStation.tandemSMV || 0.6}m)
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t border-indigo-100 pt-1">
+                      <span className="font-semibold text-slate-700">Total SMV Gabungan:</span>
+                      <span className="font-bold font-mono text-indigo-950">
+                        {selectedStation.combinedSMV || selectedStation.smv} menit
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-indigo-800 leading-relaxed">
+                    {selectedStation.tandemReason ||
+                      "Dua operator bekerja bersama di stasiun ini untuk membagi siklus kerja dan menampung proses berlebih tanpa menambah meja fisik dari 26 stasiun."}
                   </p>
                 </div>
               )}

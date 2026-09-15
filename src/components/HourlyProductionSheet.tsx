@@ -493,8 +493,13 @@ export const HourlyProductionSheet: React.FC<HourlyProductionSheetProps> = ({
                   );
                 })}
 
-                <th className="py-3 px-2 text-center w-16 bg-blue-50/70 text-blue-950 border-l border-slate-200">
-                  Total
+                <th className="py-3 px-2 text-center w-20 bg-blue-100/90 text-blue-950 border-l border-blue-200">
+                  <div className="flex flex-col items-center">
+                    <span className="font-extrabold text-[10px]">TOTAL</span>
+                    <span className="text-[8px] font-mono font-bold text-blue-700 bg-white/80 px-1 rounded shadow-xs">
+                      ∑ SUM
+                    </span>
+                  </div>
                 </th>
                 <th className="py-3 px-2 text-center w-14 text-rose-700">Defect</th>
                 <th className="py-3 px-3 min-w-[140px]">Status & Keterangan</th>
@@ -508,6 +513,8 @@ export const HourlyProductionSheet: React.FC<HourlyProductionSheetProps> = ({
                 const isBottleneck = row.status === "bottleneck";
                 const isDoubleJob = row.isDoubleJob;
                 const isTandem = row.isTandem;
+                // Sum of hourly actuals for this row
+                const rowTotalActual = row.hourlyActual.reduce((acc, val) => acc + (Number(val) || 0), 0);
 
                 return (
                   <tr
@@ -630,9 +637,12 @@ export const HourlyProductionSheet: React.FC<HourlyProductionSheetProps> = ({
                       );
                     })}
 
-                    {/* Total Actual */}
-                    <td className="py-2 px-2 text-center font-mono font-extrabold bg-blue-50/40 text-blue-900">
-                      {row.totalActual}
+                    {/* Total Actual (SUM) */}
+                    <td
+                      className="py-2 px-2 text-center font-mono font-black bg-blue-50/70 text-blue-950 border-l border-blue-200"
+                      title={`SUM Jam 1-8: ${rowTotalActual} pcs`}
+                    >
+                      {rowTotalActual}
                     </td>
 
                     {/* Defects */}
@@ -691,6 +701,85 @@ export const HourlyProductionSheet: React.FC<HourlyProductionSheetProps> = ({
                 );
               })}
             </tbody>
+
+            {/* SUMMARY FOOTER: SUM PADA KOLOM TOTAL & PER-JAM */}
+            <tfoot className="bg-slate-100/95 font-bold border-t-2 border-slate-300 text-slate-800 text-[11px]">
+              <tr>
+                <td colSpan={5} className="py-3 px-3 text-right uppercase tracking-wider text-slate-700">
+                  <div className="flex items-center justify-end space-x-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                    <span className="font-extrabold text-slate-900">
+                      TOTAL SUM OUTPUT ({filteredRows.length} PROSES):
+                    </span>
+                  </div>
+                </td>
+
+                {/* SUM Target */}
+                <td className="py-3 px-2 text-center font-mono font-black text-slate-900 bg-slate-200/60">
+                  {filteredRows.reduce((sum, r) => sum + (r.target || 0), 0)}
+                </td>
+
+                {/* SUM Jam 1 s/d Jam 8 */}
+                {[0, 1, 2, 3, 4, 5, 6, 7].map((hIdx) => {
+                  const hourTotal = filteredRows.reduce(
+                    (sum, r) => sum + (Number(r.hourlyActual[hIdx]) || 0),
+                    0
+                  );
+                  const isOffSchedule = hIdx + 1 > activeWorkingHours;
+                  return (
+                    <td
+                      key={hIdx}
+                      className={`py-3 px-1 text-center font-mono font-bold border-l border-slate-200 ${
+                        isOffSchedule
+                          ? "bg-slate-200/40 text-slate-400"
+                          : "text-slate-900 bg-slate-100"
+                      }`}
+                    >
+                      {hourTotal}
+                    </td>
+                  );
+                })}
+
+                {/* SUM PADA KOLOM TOTAL */}
+                <td className="py-3 px-2 text-center font-mono font-black text-sm bg-blue-200/80 text-blue-950 border-l border-blue-300 shadow-inner">
+                  {filteredRows.reduce(
+                    (totalSum, r) =>
+                      totalSum +
+                      r.hourlyActual.reduce((rowSum, val) => rowSum + (Number(val) || 0), 0),
+                    0
+                  )}
+                </td>
+
+                {/* SUM Defects */}
+                <td className="py-3 px-2 text-center font-mono font-bold text-rose-700 bg-rose-50/70">
+                  {filteredRows.reduce((sum, r) => sum + (Number(r.totalDefects) || 0), 0)}
+                </td>
+
+                {/* Line Achievement / Summary Status */}
+                <td className="py-3 px-3 text-[11px]">
+                  {(() => {
+                    const totalTgt = filteredRows.reduce((sum, r) => sum + (r.target || 0), 0);
+                    const totalAct = filteredRows.reduce(
+                      (totalSum, r) =>
+                        totalSum +
+                        r.hourlyActual.reduce((rowSum, val) => rowSum + (Number(val) || 0), 0),
+                      0
+                    );
+                    const pct = totalTgt > 0 ? Math.round((totalAct / totalTgt) * 100) : 0;
+                    return (
+                      <span className="font-bold text-blue-900 flex items-center space-x-1.5">
+                        <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-mono">
+                          {pct}%
+                        </span>
+                        <span>Efisiensi Output</span>
+                      </span>
+                    );
+                  })()}
+                </td>
+
+                <td className="py-3 px-2"></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
