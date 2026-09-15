@@ -8,7 +8,9 @@ import {
   Fishbone6M,
   FiveWhyItem,
   EngineeringRecommendation,
+  GarmentProductType,
 } from "../types";
+import { calculateProductBasedGrading } from "../utils/grading";
 
 export const VALID_LINES: LineNumber[] = [1, 3, 4, 5, 6, 7];
 
@@ -108,15 +110,30 @@ export function generate26OperatorsForLine(lineId: LineNumber): Operator[] {
       attendanceNotes = "Tanpa Pemberitahuan";
     }
 
-    // Skills & Grades
+    // Skills & Product Competencies (10 Garment Products)
+    // Products: Kemeja, Jas, Celana, Blouse, Rok, Blazer, Vest, Wearpack, Toga, Jaket
     const efficiency = 75 + Math.floor((i * 13 + lineId * 7) % 32); // 75% to 106%
     const defectRate = Number((0.8 + ((i * 3 + lineId) % 5) * 0.7).toFixed(1)); // 0.8% to 4.3%
-    
-    let grade: Operator["grade"] = "B";
-    if (efficiency >= 98 && defectRate <= 2.0) grade = "A";
-    else if (efficiency >= 85 && defectRate <= 3.5) grade = "B";
-    else if (efficiency >= 72 && defectRate <= 5.0) grade = "C";
-    else grade = "D";
+
+    // Product capabilities distribution across 10 products
+    const productCapabilities: Record<GarmentProductType, number> = {
+      Kemeja: 4,
+      Celana: i % 4 !== 0 ? 3 : 2,
+      Blouse: i % 3 !== 0 ? 4 : 2,
+      Rok: i % 2 === 0 ? 4 : 3,
+      Vest: (i + lineId) % 3 === 0 ? 4 : 2,
+      Toga: (i + lineId) % 4 === 0 ? 4 : 2,
+      Blazer: i % 5 === 0 || i === 4 || i === 10 || i === 21 ? 4 : 1,
+      Jas: i % 7 === 0 || i === 19 || i === 21 ? 5 : 1,
+      Wearpack: (i + lineId) % 6 === 0 || i === 1 ? 4 : 1,
+      Jaket: i % 4 === 1 || i === 14 ? 4 : 2,
+    };
+
+    // Calculate Grade based on product capabilities
+    const gradingResult = calculateProductBasedGrading(productCapabilities);
+    const grade: Operator["grade"] = gradingResult.grade;
+    const masteredProducts = gradingResult.masteredProducts;
+    const productGradeReason = gradingResult.reason;
 
     // Machine skill matrix ratings 1..5
     const primarySkill = i % 5 === 0 ? "OL 5" : i % 7 === 0 ? "OL 3" : i === 21 ? "DURKOPP" : i % 9 === 0 ? "Button Attaching" : "SN";
@@ -157,6 +174,9 @@ export function generate26OperatorsForLine(lineId: LineNumber): Operator[] {
       assignedProcessNo: i,
       assignedProcessName: STANDARD_26_PROCESSES[i - 1]?.process || `Proses ${i}`,
       machineType: STANDARD_26_PROCESSES[i - 1]?.machine || "SN",
+      productCapabilities,
+      masteredProducts,
+      productGradeReason,
     });
   }
 

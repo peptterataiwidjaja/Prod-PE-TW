@@ -53,6 +53,7 @@ interface HourlyProductionSheetProps {
     newActual: number,
     newDefect: number
   ) => void;
+  onUpdateRowDefects?: (processNo: number, newDefects: number) => void;
   onUpdateProcessAssignment?: (
     processNo: number,
     operatorName: string,
@@ -78,6 +79,7 @@ export const HourlyProductionSheet: React.FC<HourlyProductionSheetProps> = ({
   onApplyDoubleJob,
   onApplyTandem,
   onUpdateHourlyOutput,
+  onUpdateRowDefects,
   onUpdateProcessAssignment,
   onOpenPrintReport,
   onUpdateSewingSchedule,
@@ -88,6 +90,7 @@ export const HourlyProductionSheet: React.FC<HourlyProductionSheetProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSection, setSelectedSection] = useState<string>("ALL");
   const [editingCell, setEditingCell] = useState<{ processNo: number; hourIndex: number } | null>(null);
+  const [editingDefectRow, setEditingDefectRow] = useState<number | null>(null);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
 
@@ -495,13 +498,20 @@ export const HourlyProductionSheet: React.FC<HourlyProductionSheetProps> = ({
 
                 <th className="py-3 px-2 text-center w-20 bg-blue-100/90 text-blue-950 border-l border-blue-200">
                   <div className="flex flex-col items-center">
-                    <span className="font-extrabold text-[10px]">TOTAL</span>
+                    <span className="font-extrabold text-[10px]">DEFECT</span>
                     <span className="text-[8px] font-mono font-bold text-blue-700 bg-white/80 px-1 rounded shadow-xs">
-                      ∑ SUM
+                      ∑ Jam 1-8
                     </span>
                   </div>
                 </th>
-                <th className="py-3 px-2 text-center w-14 text-rose-700">Defect</th>
+                <th className="py-3 px-2 text-center w-16 text-rose-700 bg-rose-50/70 border-l border-rose-100">
+                  <div className="flex flex-col items-center">
+                    <span className="font-extrabold text-[10px] text-rose-800">TOTAL</span>
+                    <span className="text-[8px] font-bold text-rose-600 bg-rose-100 px-1 py-0.2 rounded">
+                      Manual
+                    </span>
+                  </div>
+                </th>
                 <th className="py-3 px-3 min-w-[140px]">Status & Keterangan</th>
                 <th className="py-3 px-2 text-center w-12">Aksi</th>
               </tr>
@@ -513,8 +523,8 @@ export const HourlyProductionSheet: React.FC<HourlyProductionSheetProps> = ({
                 const isBottleneck = row.status === "bottleneck";
                 const isDoubleJob = row.isDoubleJob;
                 const isTandem = row.isTandem;
-                // Sum of hourly actuals for this row
-                const rowTotalActual = row.hourlyActual.reduce((acc, val) => acc + (Number(val) || 0), 0);
+                // Sum of hourly actuals strictly for Jam 1 to Jam 8
+                const rowTotalActual = row.hourlyActual.slice(0, 8).reduce((acc, val) => acc + (Number(val) || 0), 0);
 
                 return (
                   <tr
@@ -637,17 +647,74 @@ export const HourlyProductionSheet: React.FC<HourlyProductionSheetProps> = ({
                       );
                     })}
 
-                    {/* Total Actual (SUM) */}
+                    {/* DEFECT (∑ Jam 1-8) */}
                     <td
                       className="py-2 px-2 text-center font-mono font-black bg-blue-50/70 text-blue-950 border-l border-blue-200"
-                      title={`SUM Jam 1-8: ${rowTotalActual} pcs`}
+                      title={`DEFECT (∑ Jam 1-8): ${rowTotalActual} pcs`}
                     >
                       {rowTotalActual}
                     </td>
 
-                    {/* Defects */}
-                    <td className="py-2 px-2 text-center font-mono font-bold text-rose-600">
-                      {row.totalDefects}
+                    {/* TOTAL (Manual Input) */}
+                    <td className="py-2 px-1 text-center font-mono font-bold text-rose-600 border-l border-rose-100 bg-rose-50/20">
+                      {editingDefectRow === row.no ? (
+                        <input
+                          type="number"
+                          min="0"
+                          defaultValue={row.totalDefects || 0}
+                          autoFocus
+                          onBlur={(e) => {
+                            const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                            if (onUpdateRowDefects) {
+                              onUpdateRowDefects(row.no, val);
+                            }
+                            setEditingDefectRow(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const val = Math.max(0, parseInt((e.target as HTMLInputElement).value, 10) || 0);
+                              if (onUpdateRowDefects) {
+                                onUpdateRowDefects(row.no, val);
+                              }
+                              setEditingDefectRow(null);
+                            } else if (e.key === "Escape") {
+                              setEditingDefectRow(null);
+                            }
+                          }}
+                          className="w-12 text-center py-0.5 border-2 border-rose-500 rounded bg-white text-rose-700 font-bold outline-none shadow-xs mx-auto block"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (canEditCurrentLine) {
+                              setEditingDefectRow(row.no);
+                            }
+                          }}
+                          disabled={!canEditCurrentLine}
+                          className={`w-full py-1 px-1 rounded flex items-center justify-center space-x-1 group transition-colors ${
+                            canEditCurrentLine
+                              ? "cursor-pointer hover:bg-rose-100/70 border border-transparent hover:border-rose-300"
+                              : "cursor-default border border-transparent"
+                          }`}
+                          title={
+                            canEditCurrentLine
+                              ? "Klik untuk memasukkan TOTAL secara manual"
+                              : "Hanya Admin Line / PE yang dapat mengubah TOTAL"
+                          }
+                        >
+                          <span
+                            className={`font-mono font-bold text-xs ${
+                              (row.totalDefects || 0) > 0 ? "text-rose-600 font-black" : "text-slate-400"
+                            }`}
+                          >
+                            {row.totalDefects || 0}
+                          </span>
+                          {canEditCurrentLine && (
+                            <Edit2 className="w-2.5 h-2.5 text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </button>
+                      )}
                     </td>
 
                     {/* Status & Keterangan */}
@@ -740,18 +807,24 @@ export const HourlyProductionSheet: React.FC<HourlyProductionSheetProps> = ({
                   );
                 })}
 
-                {/* SUM PADA KOLOM TOTAL */}
-                <td className="py-3 px-2 text-center font-mono font-black text-sm bg-blue-200/80 text-blue-950 border-l border-blue-300 shadow-inner">
+                {/* SUM PADA KOLOM DEFECT (Jam 1 s/d Jam 8) */}
+                <td
+                  className="py-3 px-2 text-center font-mono font-black text-sm bg-blue-200/80 text-blue-950 border-l border-blue-300 shadow-inner"
+                  title="SUM Kolom DEFECT (Jam 1 s/d Jam 8)"
+                >
                   {filteredRows.reduce(
                     (totalSum, r) =>
                       totalSum +
-                      r.hourlyActual.reduce((rowSum, val) => rowSum + (Number(val) || 0), 0),
+                      r.hourlyActual.slice(0, 8).reduce((rowSum, val) => rowSum + (Number(val) || 0), 0),
                     0
                   )}
                 </td>
 
-                {/* SUM Defects */}
-                <td className="py-3 px-2 text-center font-mono font-bold text-rose-700 bg-rose-50/70">
+                {/* SUM PADA KOLOM TOTAL (Manual) */}
+                <td
+                  className="py-3 px-2 text-center font-mono font-bold text-rose-700 bg-rose-50/70"
+                  title="SUM Kolom TOTAL (Manual)"
+                >
                   {filteredRows.reduce((sum, r) => sum + (Number(r.totalDefects) || 0), 0)}
                 </td>
 

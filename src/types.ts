@@ -22,6 +22,121 @@ export interface User {
   lastLogin?: string;
 }
 
+export type GarmentProductType =
+  | "Kemeja"
+  | "Jas"
+  | "Celana"
+  | "Blouse"
+  | "Rok"
+  | "Blazer"
+  | "Vest"
+  | "Wearpack"
+  | "Toga"
+  | "Jaket";
+
+export interface GarmentProductConfig {
+  id: GarmentProductType;
+  name: GarmentProductType;
+  category: "Formal / Tailored" | "Tops" | "Bottoms" | "Specialty / Uniform";
+  difficulty: "Tinggi" | "Menengah" | "Dasar";
+  difficultyScore: 3 | 2 | 1;
+  description: string;
+  keyProcesses: string[];
+}
+
+export const GARMENT_PRODUCTS_CONFIG: GarmentProductConfig[] = [
+  {
+    id: "Kemeja",
+    name: "Kemeja",
+    category: "Tops",
+    difficulty: "Dasar",
+    difficultyScore: 1,
+    description: "Kemeja pria/wanita formal & kasual (Kerah daun, plaket kancing, manset lengan, yoke)",
+    keyProcesses: ["Kerah & Board", "Manset & Plaket", "Pasang Lengan", "Side Seam & Hemming"],
+  },
+  {
+    id: "Jas",
+    name: "Jas",
+    category: "Formal / Tailored",
+    difficulty: "Tinggi",
+    difficultyScore: 3,
+    description: "Jas formal pria/wanita full-tailored (Canvasing dada, lapel roll, sleeve head pad, furing rapi)",
+    keyProcesses: ["Canvasing Dada", "Pasang Lapel & Kerah Jas", "Set Sleeve Head & Pad", "Lining Assembly & Vent"],
+  },
+  {
+    id: "Celana",
+    name: "Celana",
+    category: "Bottoms",
+    difficulty: "Menengah",
+    difficultyScore: 2,
+    description: "Celana panjang formal/chino/workwear (Pesak, resleting fly front, kantong bobok paspoal, ban pinggang)",
+    keyProcesses: ["Fly Front Zipper", "Kantong Bobok Paspoal", "Pasang Ban Pinggang", "Jahit Pesak & Hemming"],
+  },
+  {
+    id: "Blouse",
+    name: "Blouse",
+    category: "Tops",
+    difficulty: "Dasar",
+    difficultyScore: 1,
+    description: "Blouse wanita bahan katun/sifon (Kupnat dada, kerung leher variasi, ruffle/ploi, bukaan kancing)",
+    keyProcesses: ["Kupnat & Ploi", "Jahit Kerung Leher", "Ruffle / Variasi Lengan", "Bottom Hemming"],
+  },
+  {
+    id: "Rok",
+    name: "Rok",
+    category: "Bottoms",
+    difficulty: "Dasar",
+    difficultyScore: 1,
+    description: "Rok span / A-line / plisket (Resleting invisible, kupnat, belahan belakang, ban pinggang)",
+    keyProcesses: ["Resleting Invisible", "Jahit Belahan / Vent", "Ban Pinggang / Facing", "Soom Bawah"],
+  },
+  {
+    id: "Blazer",
+    name: "Blazer",
+    category: "Formal / Tailored",
+    difficulty: "Tinggi",
+    difficultyScore: 3,
+    description: "Blazer semi-tailored wanita/pria (Princess line shell & lining, notch/peak lapel, flap pocket)",
+    keyProcesses: ["Princess Seam Shell & Lining", "Notch Lapel Collar", "Flap Pocket / Welts", "Pasang Busa Pundak"],
+  },
+  {
+    id: "Vest",
+    name: "Vest",
+    category: "Formal / Tailored",
+    difficulty: "Menengah",
+    difficultyScore: 2,
+    description: "Rompi formal setelan jas / seragam (Kantong paspoal vest, tali gesper belakang, lining jahit balik)",
+    keyProcesses: ["Kantong Paspoal Kecil", "Balik Lining Bersih", "Tali Gesper Belakang", "Topstitch Keliling"],
+  },
+  {
+    id: "Wearpack",
+    name: "Wearpack",
+    category: "Specialty / Uniform",
+    difficulty: "Tinggi",
+    difficultyScore: 3,
+    description: "Pakaian kerja industri / tambang / coverall (Bahan tebal drill, jahitan rantai, scotlight, resleting 2 arah)",
+    keyProcesses: ["Jahit Rantai 3 Jarum", "Pasang Pita Reflektor", "Resleting Besi 2-Way", "Multiple Cargo Pockets"],
+  },
+  {
+    id: "Toga",
+    name: "Toga",
+    category: "Specialty / Uniform",
+    difficulty: "Menengah",
+    difficultyScore: 2,
+    description: "Jubah toga wisuda / advokat / hakim (Ploi kerut melingkar yoke leher, trim beludru, lengan drapery)",
+    keyProcesses: ["Ploi Kerut Melingkar", "Pasang Yoke & Velvet Trim", "Lengan Lebar Drapery", "Resleting Tersembunyi"],
+  },
+  {
+    id: "Jaket",
+    name: "Jaket",
+    category: "Specialty / Uniform",
+    difficulty: "Tinggi",
+    difficultyScore: 3,
+    description: "Jaket bomber/parka/varsity (Resleting open-end, rib karet leher/manset/bawah, kantong ritsleting, padding)",
+    keyProcesses: ["Pasang Resleting Open-End", "Sambung Rib Leher & Manset", "Kantong Bobok Resleting", "Quilting / Furing Jahit Balik"],
+  },
+];
+
 export interface SkillRating {
   machineType: string;
   level: number; // 1 to 5 (1=Novice, 2=Basic, 3=Competent, 4=Proficient, 5=Expert)
@@ -46,6 +161,10 @@ export interface Operator {
   assignedProcessNo?: number;
   assignedProcessName?: string;
   machineType?: string;
+  // Product manufacturing capabilities for grading
+  productCapabilities?: Record<GarmentProductType, boolean | number>; // capability status or rating 1-5
+  masteredProducts?: GarmentProductType[];
+  productGradeReason?: string;
 }
 
 export interface ProcessItem {

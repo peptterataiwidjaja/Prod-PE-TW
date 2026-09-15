@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { Operator, AttendanceStatus, User, LineNumber, OperatorGrade } from "../types";
+import {
+  Operator,
+  AttendanceStatus,
+  User,
+  LineNumber,
+  OperatorGrade,
+  GarmentProductType,
+  GARMENT_PRODUCTS_CONFIG,
+} from "../types";
 import {
   Users,
   CheckCircle2,
@@ -25,11 +33,15 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  Shirt,
+  Layers,
+  CheckSquare,
 } from "lucide-react";
 import {
   getGradeBadge,
   GRADING_PARAMETERS_GUIDE,
   calculateOperatorGrading,
+  calculateProductBasedGrading,
 } from "../utils/grading";
 
 interface OperatorAttendanceSheetProps {
@@ -74,6 +86,21 @@ export const OperatorAttendanceSheet: React.FC<OperatorAttendanceSheetProps> = (
   const [tempSkills, setTempSkills] = useState<Record<string, number>>({});
   const [tempPrimarySkill, setTempPrimarySkill] = useState<string>("");
   const [newMachineInput, setNewMachineInput] = useState("");
+
+  // Product capabilities editing state (10 Garment Products)
+  const [editingProductOp, setEditingProductOp] = useState<Operator | null>(null);
+  const [tempProductCaps, setTempProductCaps] = useState<Record<GarmentProductType, number>>({
+    Kemeja: 0,
+    Jas: 0,
+    Celana: 0,
+    Blouse: 0,
+    Rok: 0,
+    Blazer: 0,
+    Vest: 0,
+    Wearpack: 0,
+    Toga: 0,
+    Jaket: 0,
+  });
 
   // Add / Remove Operator state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -169,6 +196,133 @@ export const OperatorAttendanceSheet: React.FC<OperatorAttendanceSheetProps> = (
     });
 
     setEditingSkillOp(null);
+  };
+
+  // Open Garment Product Matrix modal
+  const handleOpenProductMatrix = (op: Operator) => {
+    setEditingProductOp(op);
+    const initialCaps: Record<GarmentProductType, number> = {
+      Kemeja: 0,
+      Jas: 0,
+      Celana: 0,
+      Blouse: 0,
+      Rok: 0,
+      Blazer: 0,
+      Vest: 0,
+      Wearpack: 0,
+      Toga: 0,
+      Jaket: 0,
+    };
+    if (op.productCapabilities) {
+      (Object.keys(initialCaps) as GarmentProductType[]).forEach((p) => {
+        const val = op.productCapabilities?.[p];
+        if (typeof val === "number") initialCaps[p] = val;
+        else if (typeof val === "boolean") initialCaps[p] = val ? 4 : 0;
+      });
+    }
+    setTempProductCaps(initialCaps);
+  };
+
+  // Set rating for a garment product
+  const handleSetProductRating = (product: GarmentProductType, rating: number) => {
+    setTempProductCaps((prev) => ({
+      ...prev,
+      [product]: rating,
+    }));
+  };
+
+  // Quick toggle mastery for a garment product
+  const handleToggleProductMastery = (product: GarmentProductType) => {
+    setTempProductCaps((prev) => {
+      const current = prev[product] || 0;
+      return {
+        ...prev,
+        [product]: current >= 3 ? 0 : 4,
+      };
+    });
+  };
+
+  // Preset quick application for product matrix
+  const handleApplyProductPreset = (preset: "all" | "tailoring_a" | "multi_b" | "basic_c" | "reset") => {
+    if (preset === "all") {
+      setTempProductCaps({
+        Kemeja: 5,
+        Jas: 5,
+        Celana: 5,
+        Blouse: 5,
+        Rok: 5,
+        Blazer: 5,
+        Vest: 5,
+        Wearpack: 5,
+        Toga: 5,
+        Jaket: 5,
+      });
+    } else if (preset === "tailoring_a") {
+      setTempProductCaps({
+        Kemeja: 4,
+        Jas: 5,
+        Celana: 4,
+        Blouse: 3,
+        Rok: 3,
+        Blazer: 5,
+        Vest: 4,
+        Wearpack: 3,
+        Toga: 2,
+        Jaket: 4,
+      });
+    } else if (preset === "multi_b") {
+      setTempProductCaps({
+        Kemeja: 4,
+        Jas: 0,
+        Celana: 4,
+        Blouse: 4,
+        Rok: 4,
+        Blazer: 0,
+        Vest: 4,
+        Wearpack: 0,
+        Toga: 3,
+        Jaket: 0,
+      });
+    } else if (preset === "basic_c") {
+      setTempProductCaps({
+        Kemeja: 4,
+        Jas: 0,
+        Celana: 3,
+        Blouse: 3,
+        Rok: 0,
+        Blazer: 0,
+        Vest: 0,
+        Wearpack: 0,
+        Toga: 0,
+        Jaket: 0,
+      });
+    } else if (preset === "reset") {
+      setTempProductCaps({
+        Kemeja: 0,
+        Jas: 0,
+        Celana: 0,
+        Blouse: 0,
+        Rok: 0,
+        Blazer: 0,
+        Vest: 0,
+        Wearpack: 0,
+        Toga: 0,
+        Jaket: 0,
+      });
+    }
+  };
+
+  // Save product matrix and recalculate operator grade
+  const handleSaveProductMatrix = () => {
+    if (!editingProductOp || !onUpdateOperatorDetails) return;
+    const gradingResult = calculateProductBasedGrading(tempProductCaps);
+    onUpdateOperatorDetails(editingProductOp.id, {
+      productCapabilities: tempProductCaps,
+      masteredProducts: gradingResult.masteredProducts,
+      grade: gradingResult.grade,
+      productGradeReason: gradingResult.reason,
+    });
+    setEditingProductOp(null);
   };
 
   // Handle Add Operator Submit
@@ -359,6 +513,16 @@ export const OperatorAttendanceSheet: React.FC<OperatorAttendanceSheetProps> = (
                         <span className="text-[10px] uppercase font-bold text-slate-400 block">Kriteria Skill Matrix:</span>
                         <span className="font-semibold text-slate-800 text-[11px]">{g.skillMatrixCriteria}</span>
                       </div>
+
+                      <div className="p-2 rounded-xl bg-blue-50/80 border border-blue-200">
+                        <span className="text-[10px] uppercase font-bold text-blue-700 block flex items-center space-x-1">
+                          <Shirt className="w-3 h-3 text-blue-600" />
+                          <span>Kriteria Kemampuan Produk:</span>
+                        </span>
+                        <span className="font-semibold text-blue-950 text-[11px] block mt-0.5">
+                          {g.productMatrixCriteria}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -498,6 +662,7 @@ export const OperatorAttendanceSheet: React.FC<OperatorAttendanceSheetProps> = (
                 <th className="py-3 px-3">Status Kehadiran</th>
                 <th className="py-3 px-3">Keterangan</th>
                 <th className="py-3 px-3 text-center">Grade</th>
+                <th className="py-3 px-3 min-w-[210px]">Kemampuan Produk (10 Garment)</th>
                 <th className="py-3 px-3 text-center">Efisiensi</th>
                 <th className="py-3 px-3 text-center">Defect</th>
                 <th className="py-3 px-3">Skill Utama & Matriks Mesin</th>
@@ -508,7 +673,7 @@ export const OperatorAttendanceSheet: React.FC<OperatorAttendanceSheetProps> = (
             <tbody className="divide-y divide-slate-100">
               {filteredOperators.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-8 text-center text-slate-400">
+                  <td colSpan={11} className="py-8 text-center text-slate-400">
                     Tidak ada operator yang cocok dengan kriteria pencarian atau filter.
                   </td>
                 </tr>
@@ -600,6 +765,54 @@ export const OperatorAttendanceSheet: React.FC<OperatorAttendanceSheetProps> = (
                         >
                           {badge?.label}
                         </span>
+                      </td>
+
+                      {/* Kemampuan Pembuatan Produk (10 Garment) */}
+                      <td className="py-2.5 px-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between space-x-1.5">
+                            <span className="text-[11px] font-bold text-slate-800 flex items-center space-x-1">
+                              <Shirt className="w-3.5 h-3.5 text-blue-600" />
+                              <span>{op.masteredProducts?.length || 0}/10 Produk</span>
+                            </span>
+                            <button
+                              onClick={() => handleOpenProductMatrix(op)}
+                              className="px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold transition-colors flex items-center space-x-1 shadow-2xs"
+                              title="Kelola & Evaluasi Kemampuan 10 Produk Garmen"
+                            >
+                              <Layers className="w-3 h-3 text-blue-600" />
+                              <span>{canEdit ? "Evaluasi Produk" : "Lihat Produk"}</span>
+                            </button>
+                          </div>
+
+                          {/* Preview tags of mastered products */}
+                          <div className="flex flex-wrap gap-1 max-w-[240px]">
+                            {op.masteredProducts && op.masteredProducts.length > 0 ? (
+                              op.masteredProducts.slice(0, 4).map((p) => {
+                                const isHigh = ["Jas", "Blazer", "Wearpack", "Jaket"].includes(p);
+                                return (
+                                  <span
+                                    key={p}
+                                    className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                                      isHigh
+                                        ? "bg-purple-100 text-purple-800 border border-purple-200"
+                                        : "bg-slate-100 text-slate-700 border border-slate-200"
+                                    }`}
+                                  >
+                                    {p}
+                                  </span>
+                                );
+                              })
+                            ) : (
+                              <span className="text-[10px] text-slate-400 italic">Belum ada data</span>
+                            )}
+                            {op.masteredProducts && op.masteredProducts.length > 4 && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-50 text-blue-700">
+                                +{op.masteredProducts.length - 4} lainnya
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </td>
 
                       {/* Efficiency */}
@@ -874,6 +1087,275 @@ export const OperatorAttendanceSheet: React.FC<OperatorAttendanceSheetProps> = (
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: MATRIKS KEMAMPUAN 10 PRODUK GARMEN & PENENTUAN GRADING OPERATOR    */}
+      {/* ========================================================================= */}
+      {editingProductOp && (() => {
+        const liveGrading = calculateProductBasedGrading(tempProductCaps);
+        const liveBadge = getGradeBadge(liveGrading.grade);
+
+        return (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150">
+            <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-3xl w-full p-5 sm:p-6 space-y-4 max-h-[90vh] flex flex-col">
+              {/* Modal Header */}
+              <div className="flex items-start justify-between border-b border-slate-100 pb-3 shrink-0">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                    <Shirt className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
+                        Matriks Kemampuan Produk Garmen & Penentuan Grading
+                      </h3>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Operator: <strong className="text-slate-800">{editingProductOp.name}</strong> ({editingProductOp.nik}) &bull; Line {lineId}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setEditingProductOp(null)}
+                  className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="space-y-4 overflow-y-auto pr-1">
+                {/* Live Real-Time Calculated Grade Card */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 text-white shadow-md border border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[10px] uppercase font-mono tracking-widest text-slate-300">
+                        HASIL REKOMENDASI GRADING IE:
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase ${liveBadge.lightBg} ${liveBadge.text} border ${liveBadge.border}`}>
+                        Grade {liveGrading.grade}
+                      </span>
+                    </div>
+                    <div className="text-sm font-semibold text-slate-200">
+                      {liveGrading.reason}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-300">
+                      <div className="flex items-center space-x-1.5">
+                        <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Total Dikuasai: <strong className="text-white font-mono">{liveGrading.masteredCount} / 10 Produk</strong></span>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        <Award className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Kesulitan Tinggi: <strong className="text-white font-mono">{liveGrading.highComplexityCount} / 4</strong> (Jas, Blazer, Wearpack, Jaket)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="sm:text-right shrink-0 flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 sm:border-l border-slate-700 pt-2 sm:pt-0 sm:pl-4">
+                    <div className="text-[10px] text-slate-400 font-mono">STATUS EVALUASI</div>
+                    <div className="text-2xl font-black font-mono text-emerald-400">
+                      {liveGrading.masteredCount >= 6 ? "AHLI" : liveGrading.masteredCount >= 4 ? "TERAMPIL" : liveGrading.masteredCount >= 2 ? "STANDAR" : "PEMBINAAN"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Presets */}
+                {canEdit && (
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-700 flex items-center space-x-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Preset Cepat Berdasarkan Pola Kemampuan:</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400">Klik untuk menerapkan profil standar</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleApplyProductPreset("all")}
+                        className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 text-slate-700 hover:text-emerald-700 text-[11px] font-semibold transition-all shadow-2xs"
+                      >
+                        🌟 Universal Master (Semua 10 Produk &rarr; Grade A)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyProductPreset("tailoring_a")}
+                        className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 hover:border-purple-500 text-slate-700 hover:text-purple-700 text-[11px] font-semibold transition-all shadow-2xs"
+                      >
+                        👔 Spesialis Tailoring (Jas, Blazer, Jaket &rarr; Grade A)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyProductPreset("multi_b")}
+                        className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 hover:border-blue-500 text-slate-700 hover:text-blue-700 text-[11px] font-semibold transition-all shadow-2xs"
+                      >
+                        👕 Multi-Produk Standar (5 Produk &rarr; Grade B)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyProductPreset("basic_c")}
+                        className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 hover:border-amber-500 text-slate-700 hover:text-amber-700 text-[11px] font-semibold transition-all shadow-2xs"
+                      >
+                        👖 Produk Dasar (Kemeja, Celana &rarr; Grade C)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyProductPreset("reset")}
+                        className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 hover:border-rose-500 text-slate-500 hover:text-rose-600 text-[11px] font-semibold transition-all shadow-2xs"
+                      >
+                        🔄 Reset Kosong
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 10 Garment Products Matrix List */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                      <span>Daftar 10 Jenis Produk Garmen & Level Kompetensi:</span>
+                    </h4>
+                    <span className="text-[10px] text-slate-500">Skor &ge; 3 dihitung sebagai "Menguasai"</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    {GARMENT_PRODUCTS_CONFIG.map((pConfig) => {
+                      const currentScore = tempProductCaps[pConfig.name] || 0;
+                      const isMastered = currentScore >= 3;
+                      const isHighComplexity = pConfig.difficulty === "Tinggi";
+
+                      return (
+                        <div
+                          key={pConfig.name}
+                          className={`p-3 rounded-2xl border transition-all ${
+                            isMastered
+                              ? isHighComplexity
+                                ? "bg-purple-50/60 border-purple-200 shadow-xs"
+                                : "bg-blue-50/50 border-blue-200 shadow-xs"
+                              : "bg-slate-50/50 border-slate-200 hover:bg-white"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center space-x-1.5">
+                                <span className="font-extrabold text-xs text-slate-900">{pConfig.name}</span>
+                                {isHighComplexity ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                    Tingkat Tinggi
+                                  </span>
+                                ) : pConfig.difficulty === "Menengah" ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                    Menengah
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200/80 text-slate-700">
+                                    Dasar
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                                {pConfig.description}
+                              </div>
+                            </div>
+
+                            {/* Quick Toggle Button */}
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleProductMastery(pConfig.name)}
+                                className={`shrink-0 px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all flex items-center space-x-1 shadow-2xs ${
+                                  isMastered
+                                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                                }`}
+                              >
+                                {isMastered ? <Check className="w-3 h-3" /> : null}
+                                <span>{isMastered ? "Dikuasai" : "Belum"}</span>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Detail Level Selector (0 - 5) */}
+                          <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between">
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              {currentScore === 5
+                                ? "5: Ahli / Trainer"
+                                : currentScore === 4
+                                ? "4: Mahir (Cepat)"
+                                : currentScore === 3
+                                ? "3: Mandiri (Standar)"
+                                : currentScore === 2
+                                ? "2: Bimbingan"
+                                : currentScore === 1
+                                ? "1: Training"
+                                : "0: Belum Pernah"}
+                            </span>
+
+                            <div className="flex items-center space-x-1">
+                              {[0, 1, 2, 3, 4, 5].map((lvl) => (
+                                <button
+                                  key={lvl}
+                                  type="button"
+                                  disabled={!canEdit}
+                                  onClick={() => handleSetProductRating(pConfig.name, lvl)}
+                                  className={`w-6 h-6 rounded-lg text-[10px] font-mono font-bold transition-all ${
+                                    currentScore === lvl
+                                      ? lvl >= 3
+                                        ? "bg-blue-600 text-white shadow-2xs scale-105"
+                                        : "bg-slate-800 text-white"
+                                      : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                                  }`}
+                                  title={`Tingkat ${lvl} untuk ${pConfig.name}`}
+                                >
+                                  {lvl}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Industrial Engineering Informational Box */}
+                <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex items-start space-x-2.5 text-xs text-blue-950">
+                  <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div className="leading-relaxed text-[11px]">
+                    <strong>Ketentuan Standar IE:</strong> Penentuan <strong>Grade A</strong> membutuhkan penguasaan minimal 6 produk dengan salah satu produk kompleksitas tinggi (Jas, Blazer, Wearpack, Jaket) atau menguasai minimal 8 produk umum. Operator <strong>Grade B</strong> menguasai 4–7 produk standar. Operator <strong>Grade C</strong> menguasai 2–3 produk dasar. Operator yang hanya menguasai &le;1 produk dikelompokkan ke <strong>Grade D</strong> (pembinaan).
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between shrink-0">
+                <div className="text-xs text-slate-500">
+                  Perubahan akan otomatis memperbarui <strong className="text-slate-800">Grade & Skill Operator</strong>.
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingProductOp(null)}
+                    className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 font-bold text-xs hover:bg-slate-50"
+                  >
+                    Batal
+                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={handleSaveProductMatrix}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center space-x-1.5"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Simpan & Terapkan Grade ({liveGrading.grade})</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* MODAL 2: TAMBAH OPERATOR BARU KE LINE                                     */}
@@ -1197,6 +1679,19 @@ export const OperatorAttendanceSheet: React.FC<OperatorAttendanceSheetProps> = (
                       />
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const opToEdit = editingOperator;
+                      setEditingOperator(null);
+                      handleOpenProductMatrix(opToEdit);
+                    }}
+                    className="w-full mt-2 py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-bold border border-blue-200 flex items-center justify-center space-x-2 transition-colors"
+                  >
+                    <Shirt className="w-4 h-4 text-blue-600" />
+                    <span>Buka Evaluasi 10 Produk Garmen (Auto-Grading)</span>
+                  </button>
                 </div>
               )}
             </div>

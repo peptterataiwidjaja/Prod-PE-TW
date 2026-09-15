@@ -560,7 +560,7 @@ export default function App() {
     });
   };
 
-  // HOURLY PRODUCTION SHEET OUTPUT UPDATE
+  // HOURLY PRODUCTION SHEET OUTPUT UPDATE (Total is sum of Jam 1 to 8)
   const handleUpdateHourlyOutput = (
     processNo: number,
     hourIndex: number,
@@ -579,8 +579,10 @@ export default function App() {
           updatedHourlyActual[hourIndex] = newActual;
           updatedHourlyDefects[hourIndex] = newDefect;
 
-          const totalActual = updatedHourlyActual.reduce((a, b) => a + b, 0);
-          const totalDefects = updatedHourlyDefects.reduce((a, b) => a + b, 0);
+          // STRICTLY sum of Jam 1 through Jam 8
+          const totalActual = updatedHourlyActual.slice(0, 8).reduce((a, b) => a + (Number(b) || 0), 0);
+          // Preserve manual defect count on row
+          const totalDefects = typeof row.totalDefects === "number" ? row.totalDefects : updatedHourlyDefects.reduce((a, b) => a + b, 0);
           const balanceTarget = totalActual - row.target;
 
           return {
@@ -605,6 +607,34 @@ export default function App() {
                 : balanceTarget < 0
                 ? "Under target"
                 : "Tercapai normal",
+          };
+        }
+        return row;
+      });
+
+      return {
+        ...prev,
+        [selectedLine]: {
+          ...lineObj,
+          rows: updatedRows,
+        },
+      };
+    });
+  };
+
+  // MANUAL DEFECT INPUT UPDATE FOR HOURLY CONTROL
+  const handleUpdateRowDefects = (processNo: number, newDefects: number) => {
+    setLinesData((prev) => {
+      const lineObj = prev[selectedLine];
+      if (!lineObj) return prev;
+
+      const safeDefects = Math.max(0, Number(newDefects) || 0);
+
+      const updatedRows = lineObj.rows.map((row) => {
+        if (row.no === processNo) {
+          return {
+            ...row,
+            totalDefects: safeDefects,
           };
         }
         return row;
@@ -823,6 +853,7 @@ export default function App() {
             onApplyDoubleJob={handleApplyDoubleJob}
             onApplyTandem={handleApplyTandem}
             onUpdateHourlyOutput={handleUpdateHourlyOutput}
+            onUpdateRowDefects={handleUpdateRowDefects}
             onUpdateProcessAssignment={handleUpdateProcessAssignment}
             onOpenPrintReport={() => setIsPrintReportOpen(true)}
             onNavigateToAttendance={() => setActiveTab("attendance")}
